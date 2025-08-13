@@ -6,7 +6,7 @@ const cors = require('cors');
 const app = express();
 
 // Set the port to 3001 (React will use 3000)
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors()); // Allow frontend to connect
