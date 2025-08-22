@@ -27,6 +27,22 @@ const sanitizeDate = (dateValue) => {
   return dateValue;
 };
 
+// Helper function to convert database row to frontend format
+const convertToFrontendFormat = (row) => {
+  return {
+    id: row.id,
+    status: row.status,
+    location: row.location,
+    contents: row.contents,
+    assignedTo: row.assigned_to,
+    dateDropped: row.date_dropped,
+    dateDumped: row.date_dumped,
+    weight: row.weight,
+    lastUpdated: row.last_updated,
+    updatedBy: row.updated_by
+  };
+};
+
 // Initialize database - create table if it doesn't exist
 async function initDB() {
   try {
@@ -73,7 +89,8 @@ app.get('/', (req, res) => {
 app.get('/api/containers', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM containers ORDER BY last_updated DESC');
-    res.json(result.rows);
+    const containers = result.rows.map(convertToFrontendFormat);
+    res.json(containers);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Database error' });
@@ -84,7 +101,8 @@ app.get('/api/containers', async (req, res) => {
 app.get('/api/containers/archived', async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM containers WHERE status = 'Dumped' ORDER BY last_updated DESC");
-    res.json(result.rows);
+    const containers = result.rows.map(convertToFrontendFormat);
+    res.json(containers);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Database error' });
@@ -112,7 +130,8 @@ app.post('/api/containers', async (req, res) => {
       RETURNING *
     `, [id, status, location, contents, assignedTo, sanitizedDateDropped, sanitizedDateDumped, weight, 'System']);
     
-    res.status(201).json(result.rows[0]);
+    const newContainer = convertToFrontendFormat(result.rows[0]);
+    res.status(201).json(newContainer);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Database error' });
@@ -128,7 +147,8 @@ app.get('/api/containers/:id', async (req, res) => {
       return res.status(404).json({ error: 'Container not found' });
     }
     
-    res.json(result.rows[0]);
+    const container = convertToFrontendFormat(result.rows[0]);
+    res.json(container);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Database error' });
@@ -156,7 +176,8 @@ app.put('/api/containers/:id', async (req, res) => {
       return res.status(404).json({ error: 'Container not found' });
     }
     
-    res.json(result.rows[0]);
+    const updatedContainer = convertToFrontendFormat(result.rows[0]);
+    res.json(updatedContainer);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Database error' });
@@ -172,7 +193,8 @@ app.delete('/api/containers/:id', async (req, res) => {
       return res.status(404).json({ error: 'Container not found' });
     }
     
-    res.json({ message: 'Container deleted', container: result.rows[0] });
+    const deletedContainer = convertToFrontendFormat(result.rows[0]);
+    res.json({ message: 'Container deleted', container: deletedContainer });
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Database error' });
@@ -209,7 +231,8 @@ app.get('/api/containers/search', async (req, res) => {
     query += ' ORDER BY last_updated DESC';
     
     const result = await pool.query(query, params);
-    res.json(result.rows);
+    const containers = result.rows.map(convertToFrontendFormat);
+    res.json(containers);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Database error' });
