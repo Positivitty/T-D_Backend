@@ -19,6 +19,14 @@ const pool = new Pool({
 app.use(cors()); // Allow frontend to connect
 app.use(express.json());
 
+// Helper function to sanitize date values
+const sanitizeDate = (dateValue) => {
+  if (!dateValue || dateValue.trim() === '') {
+    return null;
+  }
+  return dateValue;
+};
+
 // Initialize database - create table if it doesn't exist
 async function initDB() {
   try {
@@ -94,11 +102,15 @@ app.post('/api/containers', async (req, res) => {
       return res.status(400).json({ error: 'Container number already exists' });
     }
 
+    // Sanitize date values - convert empty strings to null
+    const sanitizedDateDropped = sanitizeDate(dateDropped);
+    const sanitizedDateDumped = sanitizeDate(dateDumped);
+
     const result = await pool.query(`
       INSERT INTO containers (id, status, location, contents, assigned_to, date_dropped, date_dumped, weight, updated_by)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
-    `, [id, status, location, contents, assignedTo, dateDropped, dateDumped, weight, 'System']);
+    `, [id, status, location, contents, assignedTo, sanitizedDateDropped, sanitizedDateDumped, weight, 'System']);
     
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -128,13 +140,17 @@ app.put('/api/containers/:id', async (req, res) => {
   try {
     const { status, location, contents, assignedTo, dateDropped, weight, dateDumped } = req.body;
     
+    // Sanitize date values - convert empty strings to null
+    const sanitizedDateDropped = sanitizeDate(dateDropped);
+    const sanitizedDateDumped = sanitizeDate(dateDumped);
+    
     const result = await pool.query(`
       UPDATE containers 
       SET status = $1, location = $2, contents = $3, assigned_to = $4, 
           date_dropped = $5, weight = $6, date_dumped = $7, last_updated = NOW(), updated_by = $8
       WHERE id = $9
       RETURNING *
-    `, [status, location, contents, assignedTo, dateDropped, weight, dateDumped, 'System', req.params.id]);
+    `, [status, location, contents, assignedTo, sanitizedDateDropped, weight, sanitizedDateDumped, 'System', req.params.id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Container not found' });
